@@ -22,8 +22,9 @@ public class DebugMovementInput : MonoBehaviour
         float vertical = Input.GetAxis("Vertical");
         float rotate = Input.GetAxis("Mouse X");
         int jump = Input.GetKey(KeyCode.Space) ? 1 : 0;
+        int dash = Input.GetKey(KeyCode.LeftShift) ? 1 : 0;
 
-        movement.Move(horizontal, vertical, rotate, jump);
+        movement.Move(horizontal, vertical, rotate, jump, dash);
     }
 
     void OnCollisionEnter(Collision col)
