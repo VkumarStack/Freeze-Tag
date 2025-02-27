@@ -442,7 +442,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e700ac918ee36614bb021421c3559165, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxSpeed: 1.2
+  maxSpeed: 1.25
   maxAcceleration: 7
   maxAirAcceleration: 3
   jumpHeight: 0.1
@@ -453,7 +453,7 @@ MonoBehaviour:
   freezeGracePeriod: 100
   unfreezeGracePeriod: 0
   unfreezesNaturally: 1
-  naturalThawPeriod: 750
+  naturalThawPeriod: 300
   frozenColor: {r: 0.866634, g: 0.8962264, b: 0.89473486, a: 1}
   body: {fileID: 0}
   onGround: 0

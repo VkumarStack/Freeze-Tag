@@ -18,11 +18,16 @@ public class EnvController : MonoBehaviour
     [SerializeField] private float initiallyFrozenProbability = 0.2f;
     [SerializeField] private float obstacleProbability = 0.3f;
 
+    [SerializeField] private float frozenDistanceThreshold = 0.5f;
+
     [SerializeField] private float r_survival = 1f;
     [SerializeField] private float r_frozen = -0.25f;
     [SerializeField] private float r_unfreeze = 0.15f;
     [SerializeField] private float r_existential = 0.5f;
-    [SerializeField] private float r_snowball = 0.125f;
+    [SerializeField] private float r_snowball = 0.175f;
+    [SerializeField] private float r_snowball_miss = -0.075f;
+    [SerializeField] private float r_frozen_distance_penalty_factor = -0.2f;
+    private float r_frozen_distance_penalty;
     [SerializeField] private float rg_snowball = 0.1f;
     [SerializeField] private float rg_freeze = -0.2f;
     [SerializeField] private float rg_unfreeze_factor = 0.25f;
@@ -89,6 +94,7 @@ public class EnvController : MonoBehaviour
         }
 
         HideObstacles(obstacleProbability);
+        r_frozen_distance_penalty = r_frozen_distance_penalty_factor / taggerAgents[0].Agent.GetComponent<Movement>().naturalThawPeriod;
     }
 
     // Update is called once per frame
@@ -128,6 +134,7 @@ public class EnvController : MonoBehaviour
             else
             {
                 DistributeExistentialRewards();
+                DistributeProximityRewards();
             }
         }
     }
@@ -149,6 +156,12 @@ public class EnvController : MonoBehaviour
         
         runner.AddReward(r_snowball);
         runners.AddGroupReward(rg_snowball);
+    }
+
+    public void DistributeSnowballMissRewards(TagAgent tagger, TagAgent runner)
+    {
+        runner.AddReward(r_snowball_miss);
+        Debug.Log(r_snowball_miss);
     }
     
     public void DistributeThawRewards(TagAgent frozen, TagAgent runner)
@@ -198,6 +211,26 @@ public class EnvController : MonoBehaviour
             info.Agent.AddReward(t_existential / MaxEnvironmentSteps);
         }
         taggers.AddGroupReward(tg_existential / MaxEnvironmentSteps);
+    }
+
+
+    // For now, want to penalize just when Runners are very close to FrozenTaggers to learn avoiding
+    // Frozen enemies
+    public void DistributeProximityRewards()
+    {
+        foreach (AgentInfo runner in runnerAgents)
+        {
+            if (!runner.Agent.isFrozen())
+            {
+                foreach (AgentInfo tagger in taggerAgents)
+                {
+                    if (tagger.Agent.isFrozen() && Vector3.Distance(tagger.gameObject.transform.position, runner.gameObject.transform.position) < frozenDistanceThreshold)
+                    {
+                        runner.Agent.AddReward(r_frozen_distance_penalty);
+                    }
+                }
+            }
+        }
     }
 
     public void Interrupt()

@@ -14,7 +14,7 @@ public class Movement : MonoBehaviour
     [SerializeField] private int freezeGracePeriod = 100;
     [SerializeField] private int unfreezeGracePeriod = 100;
     [SerializeField] private bool unfreezesNaturally;
-    [SerializeField] private int naturalThawPeriod = 1000;
+    [SerializeField] public int naturalThawPeriod = 1000;
     [SerializeField] Color frozenColor = new Color(71, 230, 255);
     public Rigidbody body;
     MeshRenderer meshRenderer;

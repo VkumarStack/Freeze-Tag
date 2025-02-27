@@ -39,6 +39,18 @@ public class TagAgent : Agent
         sensor.AddObservation(transform.rotation.eulerAngles.y);
     }
 
+    public override void WriteDiscreteActionMask(IDiscreteActionMask actionMask)
+    {
+        if (role == Role.Runner && snowballTrigger.lastShotTime != 0)
+            actionMask.SetActionEnabled(1, 1, false);
+        
+        if (role == Role.Tagger && movement.dashTimer != 0)
+            actionMask.SetActionEnabled(1, 1, false);
+
+        if (movement.jumpTimer != 0)
+            actionMask.SetActionEnabled(0, 1, false);
+    }
+
     public override void OnActionReceived(ActionBuffers actions)
     {
 

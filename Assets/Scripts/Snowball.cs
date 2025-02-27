@@ -27,6 +27,7 @@ public class Snowball : MonoBehaviour
                 tagger.envController.DistributeSnowballHitRewards(tagger, runner);
             }
         }
+            runner.envController.DistributeSnowballMissRewards(null, runner);
         Destroy(gameObject);
     }
 }
