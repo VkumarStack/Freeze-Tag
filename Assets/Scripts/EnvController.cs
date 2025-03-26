@@ -2,6 +2,8 @@ using UnityEngine;
 using Unity.MLAgents;
 using System.Collections.Generic;
 using Random = UnityEngine.Random;
+using Unity.Cinemachine;
+using System.Linq;
 
 public class EnvController : MonoBehaviour
 {
@@ -11,6 +13,7 @@ public class EnvController : MonoBehaviour
         public GameObject gameObject;
     }
 
+    [SerializeField] private CameraManager cameraManager;
     [SerializeField] public int MaxEnvironmentSteps = 5000;
     [SerializeField] private int numRunners = 5;
     [SerializeField] private int numTaggers = 2;
@@ -18,16 +21,17 @@ public class EnvController : MonoBehaviour
     [SerializeField] private float initiallyFrozenProbability = 0.2f;
     [SerializeField] private float obstacleProbability = 0.3f;
 
-    [SerializeField] private float frozenDistanceThreshold = 0.5f;
 
     [SerializeField] private float r_survival = 1f;
     [SerializeField] private float r_frozen = -0.25f;
     [SerializeField] private float r_unfreeze = 0.15f;
+    [SerializeField] private float r_unfreeze_bonus = 0.1f; // Bonus for unfreezing a teammate if there are only a few runners left
     [SerializeField] private float r_existential = 0.5f;
+    [SerializeField] private float distance_penalty_threshold = 0.35f;
+    [SerializeField] private float distance_reward_factor = 5;
+
     [SerializeField] private float r_snowball = 0.175f;
     [SerializeField] private float r_snowball_miss = -0.075f;
-    [SerializeField] private float r_frozen_distance_penalty_factor = -0.2f;
-    private float r_frozen_distance_penalty;
     [SerializeField] private float rg_snowball = 0.1f;
     [SerializeField] private float rg_freeze = -0.2f;
     [SerializeField] private float rg_unfreeze_factor = 0.25f;
@@ -57,6 +61,7 @@ public class EnvController : MonoBehaviour
     void Awake()
     {
         scale = GameObject.Find("Ground").transform.localScale.x;
+
         spawnPoints = new List<Vector3>() { new Vector3(-4f * scale, 0.1f, 4f * scale),  new Vector3(-4f * scale, 0.1f, 0f), new Vector3(-4f * scale, 0.1f, -4f * scale), 
                                             new Vector3(-2f * scale, 0.1f, -2f * scale), new Vector3(-2f * scale, 0.1f, 0f), new Vector3(-2f * scale, 0.1f, 2.6f * scale),
                                             new Vector3(-0.6f * scale, 0.1f, -2.6f * scale), new Vector3(0f, 0.1f, 0f), new Vector3(0f, 0.1f, 2.6f * scale),
@@ -81,6 +86,9 @@ public class EnvController : MonoBehaviour
             runners.RegisterAgent(runner.GetComponent<TagAgent>());
 
             runner.GetComponent<TagAgent>().initialFreeze = initiallyFrozen && i == 0; 
+
+            if (cameraManager != null)
+                cameraManager.AddCamera(runner.GetComponentInChildren<CinemachineCamera>());
         }
 
 
@@ -91,10 +99,12 @@ public class EnvController : MonoBehaviour
             GameObject tagger = Instantiate(Resources.Load("Prefabs/Tagger"), transform.TransformPoint(taggerPosition), Quaternion.Euler(0, Random.Range(-180, 180), 0), this.transform) as GameObject;
             taggerAgents.Add(new AgentInfo { Agent = tagger.GetComponent<TagAgent>(), gameObject = tagger });
             taggers.RegisterAgent(tagger.GetComponent<TagAgent>());
+
+            if (cameraManager != null)
+                cameraManager.AddCamera(tagger.GetComponentInChildren<CinemachineCamera>());
         }
 
         HideObstacles(obstacleProbability);
-        r_frozen_distance_penalty = r_frozen_distance_penalty_factor / taggerAgents[0].Agent.GetComponent<Movement>().naturalThawPeriod;
     }
 
     // Update is called once per frame
@@ -161,12 +171,18 @@ public class EnvController : MonoBehaviour
     public void DistributeSnowballMissRewards(TagAgent tagger, TagAgent runner)
     {
         runner.AddReward(r_snowball_miss);
-        Debug.Log(r_snowball_miss);
     }
     
     public void DistributeThawRewards(TagAgent frozen, TagAgent runner)
     {
-        runner.AddReward(r_unfreeze);
+        int numAlive = 0;
+        foreach (AgentInfo info in runnerAgents)
+        {
+            if (!info.Agent.isFrozen())
+                numAlive++;
+        }
+
+        runner.AddReward(r_unfreeze + r_unfreeze_bonus * (1 - ((float) numAlive / numRunners)));
         runners.AddGroupReward(rg_unfreeze_factor);
     }
 
@@ -214,21 +230,27 @@ public class EnvController : MonoBehaviour
     }
 
 
-    // For now, want to penalize just when Runners are very close to FrozenTaggers to learn avoiding
-    // Frozen enemies
     public void DistributeProximityRewards()
     {
         foreach (AgentInfo runner in runnerAgents)
         {
             if (!runner.Agent.isFrozen())
             {
+                TagAgent closest;
+                float closestDist = float.PositiveInfinity; 
                 foreach (AgentInfo tagger in taggerAgents)
                 {
-                    if (tagger.Agent.isFrozen() && Vector3.Distance(tagger.gameObject.transform.position, runner.gameObject.transform.position) < frozenDistanceThreshold)
+                    float dist = Vector3.Distance(runner.gameObject.transform.position, tagger.gameObject.transform.position);
+                    if (dist < closestDist)
                     {
-                        runner.Agent.AddReward(r_frozen_distance_penalty);
+                        closest = tagger.Agent;
+                        closestDist = dist;
                     }
                 }
+
+                closestDist = Mathf.Clamp(closestDist / scale / 20.0f, 0f, 1f);
+                float dist_reward = (-Mathf.Pow(distance_reward_factor, -(closestDist / distance_penalty_threshold)) + (1 / distance_reward_factor)) * (-1 / (-1 + 1 / distance_reward_factor));
+                runner.Agent.AddReward(dist_reward / MaxEnvironmentSteps);
             }
         }
     }
