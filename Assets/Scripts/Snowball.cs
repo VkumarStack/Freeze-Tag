@@ -4,7 +4,6 @@ public class Snowball : MonoBehaviour
 {
     [SerializeField] private float snowballVelocity = 10f;
     private Rigidbody body;
-    public GameObject parent;
 
 
     void Start()
@@ -16,7 +15,7 @@ public class Snowball : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
-        TagAgent runner = parent.gameObject.GetComponent<TagAgent>();
+        TagAgent runner = transform.parent.gameObject.GetComponent<TagAgent>();
         if (collision.gameObject.CompareTag("Tagger"))
         {
             Movement movement = collision.gameObject.GetComponent<Movement>();
@@ -27,7 +26,7 @@ public class Snowball : MonoBehaviour
                 tagger.envController.DistributeSnowballHitRewards(tagger, runner);
             }
         }
-            runner.envController.DistributeSnowballMissRewards(null, runner);
+        runner.envController.DistributeSnowballMissRewards(null, runner);
         Destroy(gameObject);
     }
 }

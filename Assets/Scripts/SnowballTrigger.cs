@@ -9,7 +9,9 @@ public class SnowballTrigger : MonoBehaviour
     
 
     private Movement movement;
-    public int lastShotTime;
+    private int lastShotTime;
+
+    public int LastShotTime => lastShotTime;
 
     void Start()
     {
@@ -31,8 +33,7 @@ public class SnowballTrigger : MonoBehaviour
     {
         if (lastShotTime == 0 && !movement.Frozen)
         {
-            GameObject snowball = Instantiate(snowballPrefab, transform.position + transform.forward * snowballSpawnOffset, transform.rotation);
-            snowball.GetComponent<Snowball>().parent = gameObject;
+            GameObject snowball = Instantiate(snowballPrefab, transform.position + transform.forward * snowballSpawnOffset, transform.rotation, gameObject.transform);
 
             lastShotTime = cooldownTime;
         }

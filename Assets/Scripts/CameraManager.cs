@@ -1,51 +1,72 @@
+using System;
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
 
 public class CameraManager : MonoBehaviour
 {
-    private List<CinemachineCamera> cameras;
-    private int currentCameraIndex = 0;
-
-    public void AddCamera(CinemachineCamera camera)
-    {
-        cameras.Add(camera);
-        camera.gameObject.SetActive(false);
-    }
+    private Dictionary<KeyCode, Tuple<CinemachineCamera, TagAgent>> cameras;
+    private CinemachineCamera currentCamera;
+    private TagAgent spectatingAgent;
+    private Dictionary<string, KeyCode> keyMapping;
 
     void Awake()
-    {
-        cameras = new List<CinemachineCamera>();        
-        GameObject camerasParent = GameObject.Find("Cameras");
-        Debug.Log(camerasParent);
-        if (camerasParent != null)
+    {    
+        keyMapping = new Dictionary<string, KeyCode>
         {
-            // Get all child cameras of the "Cameras" GameObject
-            foreach (Transform child in camerasParent.transform)
-            {
-                CinemachineCamera camera = child.GetComponent<CinemachineCamera>();
-                if (camera != null)
-                {
-                    AddCamera(camera);
-                }
-            }
+            {"0", KeyCode.Alpha1}, 
+            {"1", KeyCode.Alpha2}, 
+            {"2", KeyCode.Alpha3}, 
+            {"3", KeyCode.Alpha4}, 
+            {"4", KeyCode.Alpha5}, 
+            {"5", KeyCode.Alpha6},
+            {"6", KeyCode.Alpha7},
+            {"Top Camera", KeyCode.Q},
+            {"Front Camera", KeyCode.W},
+            {"Back Camera", KeyCode.E}   
+        };
+
+        cameras = new Dictionary<KeyCode, Tuple<CinemachineCamera, TagAgent>>();
+
+        GameObject camerasParent = GameObject.Find("Cameras");
+        foreach (Transform child in camerasParent.transform)
+        {
+            CinemachineCamera camera = child.GetComponent<CinemachineCamera>();
+            AddCamera(camera, null, child.name);
         }
-        cameras[0].gameObject.SetActive(true);
+
+        Tuple<CinemachineCamera, TagAgent> pair = cameras[keyMapping["Top Camera"]];
+        currentCamera = pair.Item1;
+        spectatingAgent = null;
+        currentCamera.gameObject.SetActive(true);
+    }
+
+    // Set agent to null if no Agent associated with Camera
+    public void AddCamera(CinemachineCamera camera, TagAgent agent, string code)
+    {
+        Debug.Log(cameras);
+        cameras.Add(keyMapping[code], new Tuple<CinemachineCamera, TagAgent>(camera, agent));
+        camera.gameObject.SetActive(false);
     }
 
     void Update()
     {
-        // Switch cameras with a key press (e.g., Tab)
-        if (Input.GetKeyDown(KeyCode.Tab))
+        foreach (var item in cameras)
         {
-            // Disable the current camera
-            cameras[currentCameraIndex].gameObject.SetActive(false);
+            if (Input.GetKeyDown(item.Key))
+            {
+                if (spectatingAgent)
+                    spectatingAgent.ToggleSpectating();
+                currentCamera.gameObject.SetActive(false);
 
-            // Move to the next camera
-            currentCameraIndex = (currentCameraIndex + 1) % cameras.Count;
+                spectatingAgent = item.Value.Item2;
+                if (spectatingAgent)    
+                    spectatingAgent.ToggleSpectating();
+                currentCamera = item.Value.Item1;
+                currentCamera.gameObject.SetActive(true);
 
-            // Enable the new camera
-            cameras[currentCameraIndex].gameObject.SetActive(true);
+                break;
+            }
         }
     }
 }

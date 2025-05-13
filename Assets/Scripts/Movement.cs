@@ -1,6 +1,9 @@
 using System;
 using UnityEngine;
+using UnityEngine.UIElements;
 
+// Movement controller incorporated from Catlike Coding tutorial:
+// https://catlikecoding.com/unity/tutorials/movement/
 public class Movement : MonoBehaviour
 {
     [SerializeField] private float maxSpeed = 2.4f;
@@ -11,32 +14,47 @@ public class Movement : MonoBehaviour
     [SerializeField] int jumpCoolDown = 50;
     [SerializeField] int dashCooldown = 100;
     [SerializeField] float lookSensitivity = 150f;
-    [SerializeField] private int freezeGracePeriod = 100;
-    [SerializeField] private int unfreezeGracePeriod = 100;
-    [SerializeField] private bool unfreezesNaturally;
-    [SerializeField] public int naturalThawPeriod = 1000;
+    // Number of time steps required for the agent to get frozen again when they just become unfrozen
+    // Goal here is to prevent a Tagger agent from getting hit by a snowball right as they just unthaw
+    [SerializeField] int freezeGracePeriod = 100;
+    // Number of time steps required for the agent to get unfrozen again when they just became unfrozen earlier
+    // Goal here is to prevent a Runner agent from indefinitely saving their teammate by always colliding with them
+    [SerializeField] int unfreezeGracePeriod = 100;
+    // Set to true for Taggers (thaw from the snowball naturally)
+    [SerializeField] bool unfreezesNaturally;
+    // Time steps for natural thawing
+    [SerializeField] int naturalThawPeriod = 1000;
     [SerializeField] Color frozenColor = new Color(71, 230, 255);
-    public Rigidbody body;
-    MeshRenderer meshRenderer;
+
+    Rigidbody body;
     Vector3 velocity;
     Vector3 desiredVelocity;
+    float minGroundDotProduct;
+    Vector3 contactNormal;
     float rotateDir;
     bool desiredJump;
     bool desiredDash;
-    public bool onGround;
+    bool onGround;
     bool frozen;
-    public bool Frozen { get { return frozen; } }
-    public bool CanUnfreeze { get { return frozen && unfreezeGraceTimer == 0; } }
-    public bool CanFreeze { get { return !frozen && freezeGraceTimer == 0; } }
-    public int freezeGraceTimer;
-    public int unfreezeGraceTimer;
-    public int jumpTimer;
-    public int dashTimer;
-    public int naturalThawTimer;
-    float minGroundDotProduct;
-    Vector3 contactNormal;
+    int freezeGraceTimer;
+    int unfreezeGraceTimer;
+    int jumpTimer;
+    int dashTimer;
+    int naturalThawTimer;
     Color originalColor;
     string originalTag;
+    MeshRenderer meshRenderer;
+
+    public bool CanUnfreeze { get { return frozen && unfreezeGraceTimer == 0; } }
+    public bool CanFreeze { get { return !frozen && freezeGraceTimer == 0; } }
+    public bool Frozen => frozen;
+    public int JumpTimer => jumpTimer;
+    public int DashTimer => dashTimer;
+    public bool OnGround => onGround;
+    public Vector3 linearVelocity => body.linearVelocity;
+
+    // public VisualElement uiElement;
+
 
     void Awake() 
     {        
@@ -48,6 +66,22 @@ public class Movement : MonoBehaviour
         originalTag = gameObject.tag;
 
         Reset();
+    }
+
+    public void Reset()
+    {
+        Unfreeze();
+        freezeGraceTimer = 0;
+        unfreezeGraceTimer = 0;
+        jumpTimer = 0;
+        naturalThawTimer = 0;
+        dashTimer = 0;
+
+        body.linearVelocity = Vector3.zero;
+        body.angularVelocity = Vector3.zero;
+        desiredJump = false;
+        desiredVelocity = Vector3.zero;
+        rotateDir = 0;
     }
 
     public void Move(float horizontal, float vertical, float rotate, int jump, int dash)
@@ -148,22 +182,6 @@ public class Movement : MonoBehaviour
             velocity += transform.forward * maxSpeed * 2;
             dashTimer = dashCooldown;
         }
-    }
-
-    public void Reset()
-    {
-        Unfreeze();
-        freezeGraceTimer = 0;
-        unfreezeGraceTimer = 0;
-        jumpTimer = 0;
-        naturalThawTimer = 0;
-        dashTimer = 0;
-
-        body.linearVelocity = Vector3.zero;
-        body.angularVelocity = Vector3.zero;
-        desiredJump = false;
-        desiredVelocity = Vector3.zero;
-        rotateDir = 0;
     }
 
     void AdjustVelocity()
