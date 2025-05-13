@@ -383,7 +383,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7596158a24dc41c429a36766f6ea35c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cameras: []
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -767,7 +766,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2926316596799880484, guid: 0a670a88d54615440afbf1368f6e99cd, type: 3}
       propertyPath: initiallyFrozenProbability
-      value: 0.05
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3053486059425033604, guid: 0a670a88d54615440afbf1368f6e99cd, type: 3}
       propertyPath: m_LocalPosition.z

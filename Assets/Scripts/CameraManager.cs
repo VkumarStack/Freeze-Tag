@@ -3,15 +3,18 @@ using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
 
+// Also manages User playing
 public class CameraManager : MonoBehaviour
 {
-    private Dictionary<KeyCode, Tuple<CinemachineCamera, TagAgent>> cameras;
-    private CinemachineCamera currentCamera;
-    private TagAgent spectatingAgent;
+    // Third Person Camera, Tag Agent (Optional), First Person Camera for Agent (Optional)
+    private Dictionary<KeyCode, Tuple<CinemachineCamera, TagAgent, CinemachineCamera>> cameras;
+    private Tuple<CinemachineCamera, TagAgent, CinemachineCamera> current;
     private Dictionary<string, KeyCode> keyMapping;
+    private bool playing;
 
     void Awake()
     {    
+        playing = false;
         keyMapping = new Dictionary<string, KeyCode>
         {
             {"0", KeyCode.Alpha1}, 
@@ -26,47 +29,68 @@ public class CameraManager : MonoBehaviour
             {"Back Camera", KeyCode.E}   
         };
 
-        cameras = new Dictionary<KeyCode, Tuple<CinemachineCamera, TagAgent>>();
+        cameras = new Dictionary<KeyCode, Tuple<CinemachineCamera, TagAgent, CinemachineCamera>>();
 
         GameObject camerasParent = GameObject.Find("Cameras");
         foreach (Transform child in camerasParent.transform)
         {
             CinemachineCamera camera = child.GetComponent<CinemachineCamera>();
-            AddCamera(camera, null, child.name);
+            AddCamera(camera, null, null, child.name);
         }
 
-        Tuple<CinemachineCamera, TagAgent> pair = cameras[keyMapping["Top Camera"]];
-        currentCamera = pair.Item1;
-        spectatingAgent = null;
-        currentCamera.gameObject.SetActive(true);
+        current = cameras[keyMapping["Top Camera"]];
+        current.Item1.gameObject.SetActive(true);
     }
 
     // Set agent to null if no Agent associated with Camera
-    public void AddCamera(CinemachineCamera camera, TagAgent agent, string code)
+    public void AddCamera(CinemachineCamera camera, TagAgent agent, CinemachineCamera firstPersonCamera, string code)
     {
-        Debug.Log(cameras);
-        cameras.Add(keyMapping[code], new Tuple<CinemachineCamera, TagAgent>(camera, agent));
+        cameras.Add(keyMapping[code], new Tuple<CinemachineCamera, TagAgent, CinemachineCamera>(camera, agent, firstPersonCamera));
         camera.gameObject.SetActive(false);
+        if (firstPersonCamera != null)
+            firstPersonCamera.gameObject.SetActive(false);
     }
 
     void Update()
     {
-        foreach (var item in cameras)
+        if (Input.GetKeyDown(KeyCode.Tab) && current.Item2 != null)
+            TogglePlay();
+
+
+        if (!playing)
         {
-            if (Input.GetKeyDown(item.Key))
+            foreach (var item in cameras)
             {
-                if (spectatingAgent)
-                    spectatingAgent.ToggleSpectating();
-                currentCamera.gameObject.SetActive(false);
+                if (Input.GetKeyDown(item.Key))
+                {
+                    if (current.Item2 != null)
+                        current.Item2.ToggleSpectating();
+                    current.Item1.gameObject.SetActive(false);
 
-                spectatingAgent = item.Value.Item2;
-                if (spectatingAgent)    
-                    spectatingAgent.ToggleSpectating();
-                currentCamera = item.Value.Item1;
-                currentCamera.gameObject.SetActive(true);
+                    current = item.Value;
+                    if (current.Item2 != null)
+                        current.Item2.ToggleSpectating();
+                    current.Item1.gameObject.SetActive(true);
 
-                break;
+                    break;
+                }
             }
         }
+    }
+
+    void TogglePlay()
+    {
+        if (!playing)
+        {
+            current.Item1.gameObject.SetActive(false);
+            current.Item3.gameObject.SetActive(true);
+        }
+        else
+        {
+            current.Item3.gameObject.SetActive(false);
+            current.Item1.gameObject.SetActive(true);
+        }
+        playing = !playing;
+        current.Item2.ToggleHeuristic();
     }
 }

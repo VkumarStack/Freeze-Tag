@@ -4,6 +4,7 @@ using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine.UIElements;
 using Unity.Cinemachine;
+using Unity.MLAgents.Policies;
 
 public class TagAgent : Agent
 {
@@ -56,7 +57,7 @@ public class TagAgent : Agent
         box.Add(agentUI);
 
         cameraManager = GetComponentInParent<CameraManager>();
-        cameraManager.AddCamera(gameObject.GetComponentInChildren<CinemachineCamera>(), this, id.ToString());
+        cameraManager.AddCamera(transform.Find("Third Person Camera").GetComponent<CinemachineCamera>(), this, transform.Find("First Person Camera").GetComponent<CinemachineCamera>(), id.ToString());
     }
 
     void FixedUpdate()
@@ -171,5 +172,18 @@ public class TagAgent : Agent
     public void ToggleSpectating()
     {
         agentUI.ToggleInClassList("spectating");
+    }
+
+    public void ToggleHeuristic()
+    {
+        BehaviorParameters behavior = GetComponent<BehaviorParameters>();
+        if (behavior.BehaviorType == BehaviorType.Default)
+        {
+            behavior.BehaviorType = BehaviorType.HeuristicOnly;
+        }
+        else
+        {
+            behavior.BehaviorType = BehaviorType.Default;
+        }
     }
 }
